@@ -181,8 +181,7 @@ host_mib=$(awk '/^MemTotal:/ {print int($2 / 1024)}' /proc/meminfo)
 if ((host_mib >= 120 * 1024)); then
   [[ $(jq -r '.gpus[0].hw' "$TMP/snap-strix.json") == ryzen-ai-max-365-128gb ]] ||
     fail "Strix Halo match" "$(jq -c .gpus "$TMP/snap-strix.json")"
-  [[ $(jq -r '.kinds[0].models | map(.id) | join(" ")' "$TMP/snap-strix.json") ==
-    'halogen-qwen38-27b-strix-halo halogen-flash-next-strix-halo' ]] ||
+  [[ $(jq -r '.kinds[0].models | map(.id) | join(" ")' "$TMP/snap-strix.json") == 'halogen-qwen38-27b-strix-halo halogen-flash-next-strix-halo' ]] ||
     fail "Halogen models in snapshot" "$(jq -c .kinds "$TMP/snap-strix.json")"
 else
   [[ $(jq -r '.gpus[0].hw' "$TMP/snap-strix.json") == '' ]] ||
