@@ -49,6 +49,9 @@ shim() { printf '#!/bin/bash\n%s\n' "$2" >"$TMP/bin/$1"; chmod +x "$TMP/bin/$1";
 
 shim nvidia-smi '[[ $* == *uuid* ]] && { echo "GPU-test-${@: -1}"; exit; }
 printf "0, NVIDIA GeForce RTX 4090, 24564, 300, 41\n1, NVIDIA GeForce GT 710, 2048, 10, 30\n2, NVIDIA GeForce RTX 4090, 24564, 300, 38\n"'
+# The CLI falls back to /opt/rocm/bin/amd-smi, so absence from PATH no longer
+# keeps a host's real AMD card out of the sandbox; pin an empty report.
+shim amd-smi 'echo "{\"gpu_data\":[]}"'
 shim omarchy-setup-security-sudoless-docker 'exit 0'
 # the account is listed in the docker group unless SHIM_NOGROUP (setup not run); newgrp starts the shell it is given and
 # grants nothing, as when a login is still out of reach of the socket
@@ -141,7 +144,7 @@ shim nvidia-smi 'printf "NVIDIA-SMI has failed because it couldn'\''t communicat
 shim amd-smi 'printf "Unhandled import error: No module named '\''amdsmi'\''\n"'
 "$CLI" snapshot >"$TMP/snap-nosmi.json" || fail "a failed amd-smi broke the snapshot"
 [[ $(jq -r '.gpus | length' "$TMP/snap-nosmi.json") == 0 ]] || fail "a failed amd-smi is no AMD cards" "$(jq -c . "$TMP/snap-nosmi.json")"
-rm -f "$TMP/bin/amd-smi"
+shim amd-smi 'echo "{\"gpu_data\":[]}"'
 shim nvidia-smi '[[ $* == *uuid* ]] && { echo "GPU-test-${@: -1}"; exit; }
 printf "0, NVIDIA GeForce RTX 4090, 24564, 300, 41\n1, NVIDIA GeForce GT 710, 2048, 10, 30\n2, NVIDIA GeForce RTX 4090, 24564, 300, 38\n"'
 pass "a probe that fails (nvidia-smi's and amd-smi's own error text) reads as no cards, not as a broken snapshot"
@@ -172,7 +175,7 @@ pass "AMD discovery matches the RX 9070 XT Vulkan recipes"
 # It must match on its GPU name and host RAM, without treating 512 MiB as the model capacity.
 shim amd-smi 'case $1 in
 static) echo "{\"gpu_data\":[{\"gpu\":0,\"asic\":{\"market_name\":\"AMD Radeon 8050S\"},\"vram\":{\"size\":{\"value\":512}},\"bus\":{\"bdf\":\"0000:03:00.0\"}}]}" ;;
-metric) echo "{\"gpu_data\":[{\"gpu\":0,\"mem_usage\":{\"used_vram\":{\"value\":210}}]}" ;;
+metric) echo "{\"gpu_data\":[{\"gpu\":0,\"mem_usage\":{\"used_vram\":{\"value\":210}}}]}" ;;
 esac'
 "$CLI" snapshot >"$TMP/snap-strix.json"
 host_mib=$(awk '/^MemTotal:/ {print int($2 / 1024)}' /proc/meminfo)
@@ -187,7 +190,7 @@ else
   [[ $(jq -r '.gpus[0].hw' "$TMP/snap-strix.json") == '' ]] ||
     fail "insufficient RAM" "$(jq -c .gpus "$TMP/snap-strix.json")"
 fi
-rm -f "$TMP/bin/amd-smi"
+shim amd-smi 'echo "{\"gpu_data\":[]}"'
 shim nvidia-smi '[[ $* == *uuid* ]] && { echo "GPU-test-${@: -1}"; exit; }
 printf "0, NVIDIA GeForce RTX 4090, 24564, 300, 41\n1, NVIDIA GeForce GT 710, 2048, 10, 30\n2, NVIDIA GeForce RTX 4090, 24564, 300, 38\n"'
 recipes "$PIN"
@@ -509,7 +512,8 @@ pass "loading shows the engine's own step and percent, and a GPU reset mid-load 
 "$CLI" stop "$ID"
 rm -f "$TMP/loading" "$LOCAL_AI_SYSFS/class/drm/renderD129/device/devcoredump"
 unset LOCAL_AI_SYSFS
-rm -f "$TMP/bin/amd-smi" "$TMP/bin/readlink"
+shim amd-smi 'echo "{\"gpu_data\":[]}"'
+rm -f "$TMP/bin/readlink"
 recipes "$PIN"
 jq '.hardware["rtx-4090-24gb"].recipes[0].launch.halogen = true' "$TMP/plugin/recipes.json" >"$TMP/r2"
 mv "$TMP/r2" "$TMP/plugin/recipes.json"
@@ -531,14 +535,16 @@ metric) echo "{\"gpu_data\":[]}" ;;
 esac'
 shim readlink 'if [[ $1 == -f && $2 == /dev/dri/by-path/* ]]; then echo /dev/dri/renderD128; else /usr/bin/readlink "$@"; fi'
 shim nvidia-smi 'exit 9'
+shim stat '[[ $1 == -c && $2 == %g && $3 == /dev/dri/* ]] && echo 989 || exec /usr/bin/stat "$@"'
 "$CLI" run "$ID" amd-rocm:0
 wait_for ready
 engine=$(grep -- "--name omarchy-local-ai-$ID-engine" "$SHIM/docker.log" | tail -1)
 [[ $engine == *'--security-opt seccomp=unconfined --ipc host --ulimit memlock=-1:-1'* &&
-  $engine == *'--device /dev/kfd --group-add video --group-add render'* &&
+  $engine == *'--device /dev/kfd --group-add 998 --group-add 989'* &&
   $engine == *'--device /dev/dri'* && $engine != *'--publish'* ]] || fail "halogen engine argv" "$engine"
 "$CLI" stop "$ID"
-rm -f "$TMP/bin/readlink" "$TMP/bin/amd-smi"
+rm -f "$TMP/bin/readlink" "$TMP/bin/stat"
+shim amd-smi 'echo "{\"gpu_data\":[]}"'
 shim nvidia-smi 'printf "0, NVIDIA GeForce RTX 4090, 24564, 300, 41\n1, NVIDIA GeForce GT 710, 2048, 10, 30\n2, NVIDIA GeForce RTX 4090, 24564, 300, 38\n"'
 recipes "$PIN"
 pass "a halogen recipe receives the required runtime flags without publishing its engine"

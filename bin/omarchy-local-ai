@@ -20,9 +20,6 @@ set -euo pipefail
 shopt -s nullglob
 exec </dev/null
 
-# /opt/rocm/bin holds amd-smi, which AMD discovery needs but a session
-# started before ROCm was installed does not have on PATH.
-export PATH=$PATH:/opt/rocm/bin
 TARGET=$(readlink -f -- "${BASH_SOURCE[0]}")
 PANEL=${TARGET%/bin/*}
 CATALOG=$HOME/.cache/omarchy/local-ai/recipes.json
@@ -188,9 +185,13 @@ intel() {
 
 # amd-smi comes with ROCm; without it AMD cards are not listed and the widget says Coming soon.
 amd() {
-  omarchy-cmd-present amd-smi || { echo '[]'; return; }
-  jq -nc --argjson s "$(timeout 10 amd-smi static --json 2>/dev/null || echo '{}')" \
-    --argjson m "$(timeout 10 amd-smi metric --mem-usage --temperature --json 2>/dev/null || echo '{}')" \
+  # ROCm installs amd-smi in /opt/rocm/bin, which a session started before the
+  # install does not have on PATH.
+  local amdsmi
+  amdsmi=$(command -v amd-smi || echo /opt/rocm/bin/amd-smi)
+  [[ -x $amdsmi ]] || { echo '[]'; return; }
+  jq -nc --argjson s "$(timeout 10 "$amdsmi" static --json 2>/dev/null || echo '{}')" \
+    --argjson m "$(timeout 10 "$amdsmi" metric --mem-usage --temperature --json 2>/dev/null || echo '{}')" \
     --argjson ram "$(awk '/^MemTotal:/ {print int($2 / 1024)}' /proc/meminfo)" '
     [($s.gpu_data // [])[] | . as $g | ([($m.gpu_data // [])[] | select(.gpu == $g.gpu)][0] // {}) as $u
      | select(($g.asic.market_name // "") != "")
