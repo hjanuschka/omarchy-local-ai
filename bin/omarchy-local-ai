@@ -20,6 +20,9 @@ set -euo pipefail
 shopt -s nullglob
 exec </dev/null
 
+# /opt/rocm/bin holds amd-smi, which AMD discovery needs but a session
+# started before ROCm was installed does not have on PATH.
+export PATH=$PATH:/opt/rocm/bin
 TARGET=$(readlink -f -- "${BASH_SOURCE[0]}")
 PANEL=${TARGET%/bin/*}
 CATALOG=$HOME/.cache/omarchy/local-ai/recipes.json
@@ -501,7 +504,10 @@ phase_start() {
       a+=(--gpus "\"device=${v%,}\"")
     fi
   else
-    [[ $backend == "amd-rocm" ]] && a+=(--device /dev/kfd --group-add video --group-add render)
+    # by GID, not name: the engine image need not share the host's group names.
+    [[ $backend == "amd-rocm" ]] && a+=(--device /dev/kfd \
+      --group-add "$(getent group video | cut -d: -f3)" \
+      --group-add "$(stat -c %g /dev/dri/renderD128)")
     # oneCCL opens every by-path link it finds, so the engine sees only its own cards'
     for k in "$@"; do
       v=$(readlink -f "$(jq -r --arg k "$k" '.[] | select(.key == $k) | .node' <<<"$g")")
