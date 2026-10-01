@@ -127,6 +127,12 @@ cmd_registry() (
   while IFS= read -r r; do
     [[ $(policy "$r" "$tmp") == "ok" ]] || die "registry recipe refused: $(policy "$r" "$tmp")"
   done < <(jq -c '.hardware[].recipes[]' "$tmp")
+  # Provisional Halogen entries live beside the plugin until the registry
+  # validates them; a refresh must not drop them from the catalog.
+  if [[ -f ${PANEL:-}/halogen-recipes.json ]]; then
+    r=$(jq --slurpfile halogen "${PANEL:-}/halogen-recipes.json" '.hardware += $halogen[0]' "$tmp")
+    printf '%s\n' "$r" >"$tmp"
+  fi
   r=$(jq --arg sha "$sha" --arg at "$(now)" '.registryCommit = $sha | .refreshedAt = $at' "$tmp")
   printf '%s\n' "$r" >"$tmp"
   chmod 644 "$tmp"
