@@ -94,7 +94,8 @@
           "entrypoint": null,
           "arguments": [],
           "environment": {
-            "HALOGEN_TOKENIZER": "/models/tokenizer"
+            "HALOGEN_TOKENIZER": "/models/tokenizer",
+            "HALOGEN_KV_POOL_POSITIONS": "262144"
           },
           "port": 8731,
           "shm": "",
