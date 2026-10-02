@@ -78,7 +78,7 @@
         "engine": "halogen",
         "servedName": "halogen-flash-next-strix-halo",
         "sizeGb": 131.6,
-        "image": "ghcr.io/peonist-ai/halogen-flash-server@sha256:3b81e378561a41fac0e1c213d9482f33e59606654669919b1ea15014c0c0d211",
+        "image": "ghcr.io/peonist-ai/halogen-flash-server@sha256:089701309a7ed9f70c91daca6a66080828e032788d4e6d0da4d427587387ede5",
         "weights": [
           {
             "repository": "peonist-ai/halogen-qwen3.8-flash-next",
