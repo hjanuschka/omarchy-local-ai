@@ -1,0 +1,108 @@
+{
+  "ryzen-ai-max-365-128gb": {
+    "match": {
+      "backend": "amd-rocm",
+      "name": "AMD Radeon 8050S",
+      "names": [
+        "8050s",
+        "8050sgraphics",
+        "8060s",
+        "8060sgraphics"
+      ],
+      "unifiedMemory": true
+    },
+    "recipes": [
+      {
+        "cards": 1,
+        "minDriver": "",
+        "asset": null,
+        "scratch": null,
+        "serving": {
+          "ctxTokens": 262144
+        },
+        "capabilities": {
+          "chat": true,
+          "reasoning": true,
+          "tools": true,
+          "vision": false
+        },
+        "id": "halogen-qwen38-27b-strix-halo",
+        "name": "Qwen3.8-27B",
+        "family": "qwen",
+        "format": "HGN",
+        "engine": "halogen",
+        "servedName": "halogen-qwen38-27b-strix-halo",
+        "sizeGb": 35.866,
+        "image": "ghcr.io/peonist-ai/halogen@sha256:dc0a39a0016d6cfc58a197978febaafdf8d28403f724ded6111d98b5fb7ac0ea",
+        "weights": [
+          {
+            "repository": "peonist-ai/halogen-qwen3.8-27b",
+            "revision": "800ec932fc4a83ddd18b83d293cfd147946e77f9",
+            "dir": "",
+            "files": "",
+            "layout": "dir",
+            "mountPath": "/models",
+            "sizeGb": 35.866
+          }
+        ],
+        "launch": {
+          "entrypoint": null,
+          "arguments": [],
+          "environment": {
+            "HALOGEN_TOKENIZER": "/models/tokenizer"
+          },
+          "port": 8731,
+          "shm": "",
+          "halogen": true,
+          "minRamGiB": 120
+        }
+      },
+      {
+        "cards": 1,
+        "minDriver": "",
+        "asset": null,
+        "scratch": null,
+        "serving": {
+          "ctxTokens": 262144
+        },
+        "capabilities": {
+          "chat": true,
+          "reasoning": true,
+          "tools": true,
+          "vision": false
+        },
+        "id": "halogen-flash-next-strix-halo",
+        "name": "Qwen3.8-Flash-Next",
+        "family": "qwen",
+        "format": "HGN",
+        "engine": "halogen",
+        "servedName": "halogen-flash-next-strix-halo",
+        "sizeGb": 131.6,
+        "image": "ghcr.io/peonist-ai/halogen-flash-server@sha256:0c61bf84ac22308a53f5d1ca6b86806702d7039e5ebc51cae4c66621b92fe04a",
+        "weights": [
+          {
+            "repository": "peonist-ai/halogen-qwen3.8-flash-next",
+            "revision": "aea24edbbea1e889df62b62f9d40a8b4e574671c",
+            "dir": "",
+            "files": "",
+            "layout": "dir",
+            "mountPath": "/models",
+            "sizeGb": 131.6
+          }
+        ],
+        "launch": {
+          "entrypoint": null,
+          "arguments": [],
+          "environment": {
+            "HALOGEN_TOKENIZER": "/models/tokenizer",
+            "HALOGEN_KV_POOL_POSITIONS": "262144"
+          },
+          "port": 8731,
+          "shm": "",
+          "halogen": true,
+          "minRamGiB": 120
+        }
+      }
+    ]
+  }
+}

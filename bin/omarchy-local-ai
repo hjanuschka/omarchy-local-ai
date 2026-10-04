@@ -100,6 +100,12 @@ policy() {
     elif ([.launch.arguments[]? | select(type != "string")] | length) > 0 then "invalid arguments"
     elif (.launch.entrypoint // "" | test("^[A-Za-z0-9_./-]*$") | not) then "invalid entrypoint"
     elif (.launch.shm // "" | test("^([0-9]+[kmg]?)?$") | not) then "invalid shm size"
+    elif (.launch.halogen // false) != false and (.launch.halogen // false) != true then "invalid halogen setting"
+    elif (.launch.halogen // false) and
+      ((.image | test("^ghcr.io/peonist-ai/(halogen|halogen-flash-server)@sha256:")) | not) then "halogen requires a peonist image"
+    elif (.launch.halogen // false) and .cards != 1 then "halogen requires one card"
+    elif (.launch.minRamGiB // 0 | type) != "number" or
+      (.launch.minRamGiB // 0) < 0 or (.launch.minRamGiB // 0) > 1024 then "invalid RAM requirement"
     else "ok" end' <<<"$1"
 }
 
@@ -125,6 +131,12 @@ cmd_registry() (
   while IFS= read -r r; do
     [[ $(policy "$r" "$tmp") == "ok" ]] || die "registry recipe refused: $(policy "$r" "$tmp")"
   done < <(jq -c '.hardware[].recipes[]' "$tmp")
+  # Provisional Halogen entries live beside the plugin until the registry
+  # validates them; a refresh must not drop them from the catalog.
+  if [[ -f ${PANEL:-}/halogen-recipes.json ]]; then
+    r=$(jq --slurpfile halogen "${PANEL:-}/halogen-recipes.json" '.hardware += $halogen[0]' "$tmp")
+    printf '%s\n' "$r" >"$tmp"
+  fi
   r=$(jq --arg sha "$sha" --arg at "$(now)" '.registryCommit = $sha | .refreshedAt = $at' "$tmp")
   printf '%s\n' "$r" >"$tmp"
   chmod 644 "$tmp"
@@ -490,6 +502,12 @@ phase_start() (
       die "$k is not a card this recipe runs on"
   done
   backend=$(jq -r --arg h "$(jq -r .hw <<<"$r")" '.hardware[$h].match.backend' "$RECIPES")
+  if [[ $(jq -r '.launch.halogen // false' <<<"$r") == true && $backend != amd-rocm ]]; then
+    die "halogen requires an AMD ROCm card"
+  fi
+  if (($(awk '/^MemTotal:/ {print int($2 / 1048576)}' /proc/meminfo) < $(jq -r '.launch.minRamGiB // 0' <<<"$r"))); then
+    die "this model needs at least $(jq -r '.launch.minRamGiB' <<<"$r") GiB of system RAM"
+  fi
   if [[ $backend == "nvidia" ]] && ! nvidia_ready; then
     die "NVIDIA container support is not ready: choose Set up Local AI"
   fi
@@ -520,6 +538,9 @@ phase_start() (
   docker network create --label "$LABEL=1" --label "$LABEL.uid=$(id -u)" "$(network "$id")" >/dev/null
   a=(docker run -d --name "$(engine "$id")" --restart unless-stopped --security-opt no-new-privileges
     --network "$(network "$id")" --network-alias engine --label "$LABEL=1" --label "$LABEL.uid=$(id -u)")
+  if [[ $(jq -r '.launch.halogen // false' <<<"$r") == true ]]; then
+    a+=(--security-opt seccomp=unconfined --ipc host --ulimit memlock=-1:-1)
+  fi
   if [[ $backend == "nvidia" ]]; then
     # Through CDI (the toolkit's /etc/cdi/nvidia.yaml, which Docker reads without a restart) each card goes by its UUID:
     # CDI's own numbering need not match nvidia-smi's. An install with the nvidia runtime and no CDI list uses --gpus.
@@ -545,9 +566,15 @@ phase_start() (
       for w in /dev/dri/by-path/*-render; do
         [[ $(readlink -f "$w") == "$v" ]] && ln -s "../${v##*/}" "$run/by-path/${w##*/}"
       done
-      a+=(--device "$v")
+      if [[ $(jq -r '.launch.halogen // false' <<<"$r") != true ]]; then
+        a+=(--device "$v")
+      fi
     done
-    a+=(--volume "$run/by-path:/dev/dri/by-path:ro")
+    if [[ $(jq -r '.launch.halogen // false' <<<"$r") == true ]]; then
+      a+=(--device /dev/dri)
+    else
+      a+=(--volume "$run/by-path:/dev/dri/by-path:ro")
+    fi
     # Intel's runtime lets the copy engine read ordinary host memory in place while the weights load. On a B70 with
     # less RAM than the checkpoint that range is unmapped mid-transfer (xe: "Fault response: Unsuccessful -ENOENT",
     # copy engine reset) and vLLM waits on the lost copy. Staging through the runtime's own buffers is not enough:

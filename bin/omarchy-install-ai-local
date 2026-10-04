@@ -44,6 +44,10 @@ if omarchy-hw-nvidia; then
     omarchy-pkg-add nvidia-container-toolkit
 fi
 
+if lspci -Dn -d 1002: 2>/dev/null | grep -q . && ! command -v amd-smi >/dev/null; then
+  echo "AMD-SMI is needed to discover AMD GPUs. Install amd-smi from ROCm before running a model." >&2
+fi
+
 # the verdict the panel will show, asked the way a start asks it (under the docker group)
 IFS=$'\t' read -r state msg < <("$HERE/omarchy-local-ai" readiness) || true
 case $state in

@@ -8,7 +8,7 @@ A bar widget that runs the one model validated for each GPU in the machine and o
 | `lib/access.sh` | Whether a model can start (`readiness`), and the re-run under the docker group for a login older than setup; sourced by the backend and the installer |
 | `Model.js` | Pure functions: snapshot and ui state in, a view (rows and actions) out |
 | `Panel.qml` | Draws the view; turns an action (`verb\|arg\|arg`) into a backend verb |
-| `recipes.json` | The vendored recipes, one card kind per line: from [local-ai-registry](https://github.com/0xSero/local-ai-registry)'s `plugin/v2/recipes.json`, every recipe of each kind, best first: the first on one card is the kind's recommended model, and the rest are what a card's Config offers, on one card or across several (a group) |
+| `recipes.json` | The vendored recipes, one card kind per line: from [local-ai-registry](https://github.com/0xSero/local-ai-registry)'s `plugin/v2/recipes.json`, plus the explicitly experimental Strix Halo entries from `halogen-recipes.json` until they are validated and moved to the registry. The first recipe on one card is recommended; the rest appear in Config. |
 
 ## Flow
 
