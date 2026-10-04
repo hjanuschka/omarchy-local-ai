@@ -585,7 +585,7 @@ shim nvidia-smi 'exit 9'
 "$CLI" run "$ID" amd-rocm:0
 wait_for ready
 engine=$(grep -- "--name omarchy-local-ai-$(id -u)-$ID-engine" "$SHIM/docker.log" | tail -1)
-[[ $engine == *'--security-opt seccomp=unconfined --ipc host --ulimit memlock=-1:-1'* &&
+[[ $engine != *'seccomp=unconfined'* && $engine != *'--ipc host'* && $engine != *'memlock'* &&
   $engine == *'--device /dev/kfd --group-add 998 --group-add 998'* &&
   $engine == *'--device /dev/dri'* && $engine != *'--publish'* ]] || fail "halogen engine argv" "$engine"
 "$CLI" stop "$ID"

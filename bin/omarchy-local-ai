@@ -538,9 +538,6 @@ phase_start() (
   docker network create --label "$LABEL=1" --label "$LABEL.uid=$(id -u)" "$(network "$id")" >/dev/null
   a=(docker run -d --name "$(engine "$id")" --restart unless-stopped --security-opt no-new-privileges
     --network "$(network "$id")" --network-alias engine --label "$LABEL=1" --label "$LABEL.uid=$(id -u)")
-  if [[ $(jq -r '.launch.halogen // false' <<<"$r") == true ]]; then
-    a+=(--security-opt seccomp=unconfined --ipc host --ulimit memlock=-1:-1)
-  fi
   if [[ $backend == "nvidia" ]]; then
     # Through CDI (the toolkit's /etc/cdi/nvidia.yaml, which Docker reads without a restart) each card goes by its UUID:
     # CDI's own numbering need not match nvidia-smi's. An install with the nvidia runtime and no CDI list uses --gpus.
