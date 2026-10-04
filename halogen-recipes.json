@@ -9,7 +9,8 @@
         "8060s",
         "8060sgraphics"
       ],
-      "unifiedMemory": true
+      "unifiedMemory": true,
+      "vramGb": 128
     },
     "recipes": [
       {
